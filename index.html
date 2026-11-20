@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>窄口庆典通行仿真 — 双向礼让 / 分批放行</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>窄口庆典通行仿真</h1>
+    <p class="sub">ORCA 邻域避让 · 全局路线给意图、局部求解出实际速度 · 通行许可可撤回 · 门区不可推挤穿越</p>
+  </header>
+
+  <div class="toolbar">
+    <label>来客数
+      <input id="count" type="number" min="4" max="120" value="24" />
+    </label>
+    <label>随机种子
+      <input id="seed" type="number" value="42" />
+    </label>
+    <label>路口规则
+      <select id="policy">
+        <option value="courtesy">双向礼让</option>
+        <option value="batch">分批放行</option>
+      </select>
+    </label>
+    <label class="check"><input id="dense" type="checkbox" /> 密集模式（限制邻域规模与记录长度）</label>
+    <label>倍速
+      <select id="speed">
+        <option value="1">1×</option>
+        <option value="2" selected>2×</option>
+        <option value="4">4×</option>
+        <option value="8">8×</option>
+      </select>
+    </label>
+    <button id="newBtn">新序列</button>
+    <button id="runBtn" class="primary">运行</button>
+    <button id="stepBtn">单拍</button>
+    <button id="compareBtn" class="accent">同序列对比两种规则</button>
+  </div>
+
+  <main>
+    <section class="stage-wrap">
+      <div id="hud" class="hud"></div>
+      <canvas id="stage"></canvas>
+      <div class="legend">
+        <span><i style="background:#4f8ff7"></i>东向排队</span>
+        <span><i style="background:#b06ff2"></i>西向排队</span>
+        <span><i style="background:#3ecf8e"></i>已获准</span>
+        <span><i style="background:#f5a623"></i>门区内</span>
+        <span><i style="background:#e05c5c"></i>局部无解</span>
+        <span><i style="background:#7a8a99"></i>已完成</span>
+        <span>虚线白圈 = 行动较慢角色</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h3>角色回看</h3>
+      <div id="inspector" class="inspector"></div>
+    </aside>
+  </main>
+
+  <section id="comparePanel" class="compare"></section>
+
+  <footer class="notes">
+    <p>规则要点：未获准者在停车线收到 vx 硬约束，只能停下；门区内的人拥有避让优先权且不能被推回（vx 单向约束）；
+    连续 15 拍局部无解自动撤回许可，调度器按门区实际清空情况换向。密集模式下每拍邻居查询截断到 14 人、事件环形缓冲 60 条。</p>
+  </footer>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
