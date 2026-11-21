@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>庆典关卡与人群剧本 — 广场编辑器 / 闸机回执放行 / 行走记录对账</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>庆典关卡与人群剧本</h1>
+    <p class="sub">
+      检票闸机按真实离场回执回收名额 · 侧门改道令两队狭口交叉 · 剧本重演 + 现场回放 ·
+      从滞留角色反向打开影响链 · <a href="index.html" style="color:#4f8ff7">窄口仿真</a>
+    </p>
+  </header>
+
+  <div class="toolbar">
+    <label>场景
+      <select id="scenario">
+        <option value="smooth">顺畅场</option>
+        <option value="jammed" selected>拥堵场</option>
+        <option value="custom">自定义</option>
+      </select>
+    </label>
+    <label>种子 <input id="seed" type="number" value="42" style="width:70px" /></label>
+    <label>放行模式
+      <select id="releaseMode">
+        <option value="receipt" selected>按真实回执</option>
+        <option value="scheduled">按剧本预约</option>
+      </select>
+    </label>
+    <label>倍速
+      <select id="speed">
+        <option value="1">1×</option>
+        <option value="2" selected>2×</option>
+        <option value="4">4×</option>
+        <option value="8">8×</option>
+      </select>
+    </label>
+    <button id="applyBtn" class="primary">重演（应用编辑器）</button>
+    <button id="runBtn">运行</button>
+    <button id="stepBtn">单拍</button>
+    <button id="compareScenBtn" class="accent">同种子对比两场</button>
+    <button id="compareModeBtn" class="accent">对比两种放行</button>
+    <button id="waitCmpBtn" class="accent">等待事件通量对比</button>
+  </div>
+
+  <main>
+    <section class="stage-wrap">
+      <div id="hud" class="hud"></div>
+      <canvas id="stage" width="960" height="600"></canvas>
+      <div class="legend">
+        <span><i style="background:#4f8ff7"></i>A 队（北口）</span>
+        <span><i style="background:#b06ff2"></i>B 队（南口）</span>
+        <span><i style="background:#3a4a5c"></i>等候区未叫到</span>
+        <span><i style="background:#f5a623"></i>停驻等同伴</span>
+        <span><i style="background:#e05c5c"></i>退票中</span>
+        <span>虚线圈 = 行动较慢 · 黄圈 = 批次/选中</span>
+      </div>
+      <div id="replayBar" class="replay-bar hidden">
+        <b>现场回放</b>
+        <button id="replayPlay">播放</button>
+        <input id="replayScrub" type="range" min="0" max="0" value="0" style="width:420px" />
+        <span id="replayTick" class="mono"></span>
+        <button id="replayExit">退出回放</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h3>角色 / 批次 / 影响链</h3>
+      <div id="inspector" class="inspector"></div>
+    </aside>
+  </main>
+
+  <section class="editor">
+    <h3>广场编辑器 <span class="muted">改完点「重演」生效；布局与生成器可入库</span></h3>
+    <div class="editor-grid">
+      <div class="ed-block wide">
+        <h4>剧本时间线（拖动侧门标记改开门时刻）</h4>
+        <div id="timeline" class="timeline"></div>
+        <div class="row">
+          <label class="check"><input id="doorOn" type="checkbox" /> 侧门开放</label>
+          <label>开门 <span id="doorOpenAtTxt" class="mono">45</span>s</label>
+          <label>持续 <input id="doorDur" type="number" min="5" max="120" value="40" style="width:60px" />s</label>
+          <label>A 队第 <input id="divertFrom" type="number" min="1" max="6" value="2" style="width:48px" /> 批起改道</label>
+        </div>
+      </div>
+      <div class="ed-block">
+        <h4>演出节奏</h4>
+        <label>A 队速度 <input id="speedA" type="range" min="0.6" max="1.4" step="0.05" value="1" /><span id="speedATxt" class="mono">1.00</span></label>
+        <label>B 队速度 <input id="speedB" type="range" min="0.6" max="1.4" step="0.05" value="1" /><span id="speedBTxt" class="mono">1.00</span></label>
+        <label>每批人数 <input id="batchSize" type="number" min="2" max="10" value="6" style="width:56px" /></label>
+        <label>批次间隔 <input id="interval" type="number" min="8" max="40" value="18" style="width:56px" />s</label>
+        <label class="check"><input id="waitEvent" type="checkbox" /> 等同伴事件（B 队第 2 批排头在狭口出口停驻）</label>
+      </div>
+      <div class="ed-block">
+        <h4>场地</h4>
+        <label class="check"><input id="laneLocked" type="checkbox" /> 锁住无障碍通道</label>
+        <label>出口
+          <select id="exitSel">
+            <option value="E" selected>东出口（正东）</option>
+            <option value="NE">东北出口</option>
+          </select>
+        </label>
+        <label>场内名额 <input id="capacity" type="number" min="10" max="80" value="44" style="width:60px" /></label>
+        <label>退票耐心 <input id="patience" type="number" min="20" max="200" value="75" style="width:60px" />s</label>
+        <label class="check"><input id="detourOn" type="checkbox" /> A 队临时折返（观景台）</label>
+        <label>折返窗口 <input id="detourFrom" type="number" min="0" max="200" value="40" style="width:52px" />–<input id="detourTo" type="number" min="0" max="300" value="90" style="width:52px" />s</label>
+      </div>
+      <div class="ed-block">
+        <h4>入库</h4>
+        <button id="saveLayoutBtn">存源布局</button>
+        <button id="saveGenBtn">存事件生成器</button>
+        <button id="saveReplayBtn">存现场回放</button>
+        <p class="muted small">换出口 / 锁通道后点「重演」，队伍最终去向随场地实际改变。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="comparePanel" class="compare"></section>
+
+  <section class="ledger">
+    <h3>逐人对账 <span class="muted">实际入场 / 等待 / 退票 / 最终去向（当前场）</span></h3>
+    <div id="ledger"></div>
+  </section>
+
+  <section class="detect">
+    <h3>行走记录辨认 <span class="muted">持续等待 · 队列交换 · 穿透（来自记录帧，可随回放入库）</span></h3>
+    <div id="detect"></div>
+  </section>
+
+  <section class="library">
+    <h3>库 <span class="muted">源布局 / 事件生成器 / 现场回放</span></h3>
+    <div class="row">
+      <button id="importBtn">导入条目</button>
+      <input id="importFile" type="file" accept="application/json" class="hidden" />
+    </div>
+    <div id="libraryList"></div>
+  </section>
+
+  <script type="module" src="src/festival/fmain.js"></script>
+</body>
+</html>
